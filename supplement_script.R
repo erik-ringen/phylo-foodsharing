@@ -309,6 +309,7 @@ tracerplot(fit_m_phy_EP, pars=c("b", "eta_phy", "rho_phy", "eta_ep", "rho_ep"))
 
 # Summary of parameter estimates
 precis(fit_m_phy_EP, depth=2, pars=c("b"))
+post <- extract.samples(fit_m_phy_EP)
 apply(post$b, 2, HPDI, prob=0.9)
 
 precis(fit_m_phy_EP, pars=c("eta_phy", "eta_ep","rho_phy", "rho_ep"))
@@ -370,196 +371,6 @@ svg(filename="Cohens_d.svg",
     pointsize=12)
 
 ggplot(cohens_df, aes(x=est, y=var)) + geom_hline(yintercept = c(1:10), alpha=0.6) + geom_density_ridges2(aes(fill=var, color=var), alpha=0.7, scale=0.8, rel_min_height=0.01) + ylab("") + xlab("Cohen's d") + theme_bw(base_size=20) + scale_fill_manual(values=plot_cols) + scale_color_manual(values=plot_cols) + scale_y_discrete(expand = c(0.00, 0)) + theme(legend.title = element_blank(),panel.grid.major = element_blank(), panel.grid.minor = element_blank(), legend.position="none", axis.text.y=element_text(vjust=0), axis.ticks.y = element_blank()) + geom_vline(xintercept = 0, linetype="dashed", lwd=1) + annotate("text", x=post_probs$x, y=post_probs$y-post_probs$jitter, label=as.character(post_probs$labs), color=plot_cols, size=5.5) + annotate("blank", x = 0, y=11) + scale_x_continuous(limits=c(-2.9,2.9))
-
-dev.off()
-
-#########################################################################################
-#################### Posterior predictive plots (Figure 2B) #############################
-post <- extract.samples(fit_m_phy_EP)
-pred_seq <- seq(from=-1, to=1, length.out = 10)
-plot_cols <- c(wes_palette("Darjeeling1"), wes_palette("GrandBudapest2"), "mediumorchid1")
-plot_cols[7] <- "palegreen3"
-
-### Posterior predictions
-### Continous predictors will be projected on sequence from -2SD to +2SD ([-1,1] units given our standardization)
-### Binary predictors will be projected onto a sequence c(0,1)
-{
-  labor <- matrix(0, nrow=250, ncol=2)
-  for (i in 1:250) {
-    labor[i,] = logistic(post$b[i,1] + post$b[i,10]*c(0,1))
-  }
-  food_store <- matrix(0, nrow=250, ncol=2)
-  for (i in 1:250) {
-    food_store[i,] = logistic(post$b[i,1] + post$b[i,3]*c(0,1))
-  }
-  npp_pred <- matrix(0, nrow=250, ncol=length(pred_seq))
-  for (i in 1:250) {
-    npp_pred[i,] = logistic(post$b[i,1] + post$b[i,9]*pred_seq)
-  }
-  trade_food <- matrix(0, nrow=250, ncol=2)
-  for (i in 1:250) {
-    trade_food[i,] = logistic(post$b[i,1] + post$b[i,4]*c(0,1))
-  }
-  strat <- matrix(0, nrow=250, ncol=2)
-  for (i in 1:250) {
-    strat[i,] = logistic(post$b[i,1] + post$b[i,5]*c(0,1))
-  }
-  hus <- matrix(0, nrow=250, ncol=length(pred_seq))
-  for (i in 1:250) {
-    hus[i,] = logistic(post$b[i,1] + post$b[i,6]*pred_seq)
-  }
-  temp_pred <- matrix(0, nrow=250, ncol=length(pred_seq))
-  for (i in 1:250) {
-    temp_pred[i,] = logistic(post$b[i,1] + post$b[i,8]*pred_seq)
-  }
-  comm_size <- matrix(0, nrow=250, ncol=length(pred_seq))
-  for (i in 1:250) {
-    comm_size[i,] = logistic(post$b[i,1] + post$b[i,11]*pred_seq)
-  }
-  precip_pred <- matrix(0, nrow=250, ncol=length(pred_seq))
-  for (i in 1:250) {
-    precip_pred[i,] = logistic(post$b[i,1] + post$b[i,7]*pred_seq)
-  }
-  hunt <- matrix(0, nrow=250, ncol=length(pred_seq))
-  for (i in 1:250) {
-    hunt[i,] = logistic(post$b[i,1] + post$b[i,2]*pred_seq)
-  }
-} # end predictions
-
-svg(filename="pred_plot.svg", 
-    width=6, 
-    height=8, 
-    pointsize=8)
-
-par(mfrow=c(4,3), mar=c(4, 5, 0, 2), oma=c(1,3.5,1,0.5), cex.lab=2.4, pty='s', xaxs="r", las=1) 
-{
-  ##########################
-  plot(NULL, xlab="", ylab="", xlim=c(-1,1), ylim=c(0,1), yaxt="n",  xaxt="n", axes=F, ann=F)
-  axis(1, at=seq(-1,1,length.out = 5), labels=seq(-1,1,length.out = 5)*2, cex.axis=2.2, line=1)
-  axis(2, at=c(0, 0.5, 1), labels=c("0", "0.5", "1"), cex.axis=2.2, line=1, tck=-.02)
-  shade(apply(npp_pred, 2, PI, 0.90), pred_seq, col=col.alpha(plot_cols[10], 0.18))
-  shade(apply(npp_pred, 2, PI, 0.72), pred_seq, col=col.alpha(plot_cols[10], 0.18))
-  shade(apply(npp_pred, 2, PI, 0.54), pred_seq, col=col.alpha(plot_cols[10], 0.18))
-  shade(apply(npp_pred, 2, PI, 0.36), pred_seq, col=col.alpha(plot_cols[10], 0.18))
-  shade(apply(npp_pred, 2, PI, 0.18), pred_seq, col=col.alpha(plot_cols[10], 0.18))
-  lines(x=pred_seq, y=apply(npp_pred,2,median), col=plot_cols[10], lwd=3)
-  mtext("NPP Pred. z-score", cex=1.5, line=0.5)
-  ##############################
-  plot(NULL, xlab="", ylab="", xlim=c(0,1), ylim=c(0,1), xaxt='n',  yaxt='n' , axes=F, ann=F)
-  axis(2, at=c(0, 0.5, 1), labels=c("0", "0.5", "1"), cex.axis=2.2, line=1)
-  axis(1, at=c(0.1,0.9), labels=c("Absent", "Present"), cex.axis=2.2, line=1, tck=-.02)
-  shade(apply(labor, 2, PI, 0.90), c(0,1), col=col.alpha(plot_cols[9], 0.18))
-  shade(apply(labor, 2, PI, 0.72), c(0,1), col=col.alpha(plot_cols[9], 0.18))
-  shade(apply(labor, 2, PI, 0.54), c(0,1), col=col.alpha(plot_cols[9], 0.18))
-  shade(apply(labor, 2, PI, 0.36), c(0,1), col=col.alpha(plot_cols[9], 0.18))
-  shade(apply(labor, 2, PI, 0.18), c(0,1), col=col.alpha(plot_cols[9], 0.18))
-  lines(x=c(0,1), y=apply(labor,2,median), col=plot_cols[9], lwd=3)
-  mtext("Labor Sharing", cex=1.5, line=0.5)
-  ##########################
-  plot(NULL, xlab="", ylab="", xlim=c(-1,1), ylim=c(0,1),  xaxt="n", yaxt="n", axes=F, ann=F)
-  axis(2, at=c(0, 0.5, 1), labels=c("0", "0.5", "1"), cex.axis=2.2, line=1)
-  axis(1, at=seq(-1,1,length.out = 5), labels=seq(-1,1,length.out = 5)*2, cex.axis=2.2, line=1, tck=-.02)
-  shade(apply(hus, 2, PI, 0.90), pred_seq, col=col.alpha(plot_cols[8], 0.18))
-  shade(apply(hus, 2, PI, 0.72), pred_seq, col=col.alpha(plot_cols[8], 0.18))
-  shade(apply(hus, 2, PI, 0.54), pred_seq, col=col.alpha(plot_cols[8], 0.18))
-  shade(apply(hus, 2, PI, 0.36), pred_seq, col=col.alpha(plot_cols[8], 0.18))
-  shade(apply(hus, 2, PI, 0.18), pred_seq, col=col.alpha(plot_cols[8], 0.18))
-  lines(x=pred_seq, y=apply(hus,2,median), col=plot_cols[8], lwd=3)
-  mtext("Animal Hus. z-score", cex=1.5, line=0.5)
-  ###########################
-  plot(NULL, xlab="", ylab="", xlim=c(0,1), ylim=c(0,1), xaxt='n',  yaxt="n", axes=F, ann=F)
-  axis(1, at=c(0.1,0.9), labels=c("Absent", "Present"), cex.axis=2.2, line=1)
-  axis(2, at=c(0, 0.5, 1), labels=c("0", "0.5", "1"), cex.axis=2.2, line=1, tck=-.02)
-  shade(apply(food_store, 2, PI, 0.90), c(0,1), col=col.alpha(plot_cols[7], 0.18))
-  shade(apply(food_store, 2, PI, 0.72), c(0,1), col=col.alpha(plot_cols[7], 0.18))
-  shade(apply(food_store, 2, PI, 0.54), c(0,1), col=col.alpha(plot_cols[7], 0.18))
-  shade(apply(food_store, 2, PI, 0.36), c(0,1), col=col.alpha(plot_cols[7], 0.18))
-  shade(apply(food_store, 2, PI, 0.18), c(0,1), col=col.alpha(plot_cols[7], 0.18))
-  lines(x=c(0,1), y=apply(food_store,2,median), col=plot_cols[7], lwd=3)
-  mtext("Food Storage", cex=1.5, line=0.5)
-  ##############################
-  plot(NULL, xlab="", ylab="", xlim=c(-1,1), ylim=c(0,1), xaxt='n', yaxt="n",  axes=F, ann=F)
-  axis(2, at=c(0, 0.5, 1), labels=c("0", "0.5", "1"), cex.axis=2.2, line=1, tck=-.02)
-  axis(1, at=seq(-1,1,length.out = 5), labels=seq(-1,1,length.out = 5)*2, cex.axis=2.2, line=1)
-  shade(apply(temp_pred, 2, PI, 0.90), pred_seq, col=col.alpha(plot_cols[6], 0.18))
-  shade(apply(temp_pred, 2, PI, 0.72), pred_seq, col=col.alpha(plot_cols[6], 0.18))
-  shade(apply(temp_pred, 2, PI, 0.54), pred_seq, col=col.alpha(plot_cols[6], 0.18))
-  shade(apply(temp_pred, 2, PI, 0.36), pred_seq, col=col.alpha(plot_cols[6], 0.18))
-  shade(apply(temp_pred, 2, PI, 0.18), pred_seq, col=col.alpha(plot_cols[6], 0.18))
-  lines(x=pred_seq, y=apply(temp_pred,2,median), col=plot_cols[6], lwd=3)
-  mtext("Temp Pred. z-score", cex=1.5, line=0.5)
-  ##########################
-  plot(NULL, xlab="", ylab="", xlim=c(0,1), ylim=c(0,1), xaxt='n',  yaxt="n", axes=F, ann=F)
-  axis(1, at=c(0.1,0.9), labels=c("Absent", "Present"), cex.axis=2.2, line=1)
-  axis(2, at=c(0, 0.5, 1), labels=c("0", "0.5", "1"), cex.axis=2.2, line=1, tck=-.02)
-  shade(apply(trade_food, 2, PI, 0.90), c(0,1), col=col.alpha(plot_cols[5], 0.18))
-  shade(apply(trade_food, 2, PI, 0.72), c(0,1), col=col.alpha(plot_cols[5], 0.18))
-  shade(apply(trade_food, 2, PI, 0.54), c(0,1), col=col.alpha(plot_cols[5], 0.18))
-  shade(apply(trade_food, 2, PI, 0.36), c(0,1), col=col.alpha(plot_cols[5], 0.18))
-  shade(apply(trade_food, 2, PI, 0.18), c(0,1), col=col.alpha(plot_cols[5], 0.18))
-  lines(x=c(0,1), y=apply(trade_food,2,median), col=plot_cols[5], lwd=3)
-  mtext("External Trade", cex=1.5, line=0.5)
-  ##############################
-  plot(NULL, xlab="", ylab="", xlim=c(-1,1), ylim=c(0,1), xaxt='n', yaxt="n",  axes=F, ann=F)
-  axis(2, at=c(0, 0.5, 1), labels=c("0", "0.5", "1"), cex.axis=2.2, line=1)
-  axis(1, at=seq(-1,1,length.out = 5), labels=seq(-1,1,length.out = 5)*2, cex.axis=2.2, line=1, tck=-.02)
-  shade(apply(comm_size, 2, PI, 0.90), pred_seq, col=col.alpha(plot_cols[4], 0.18))
-  shade(apply(comm_size, 2, PI, 0.72), pred_seq, col=col.alpha(plot_cols[4], 0.18))
-  shade(apply(comm_size, 2, PI, 0.54), pred_seq, col=col.alpha(plot_cols[4], 0.18))
-  shade(apply(comm_size, 2, PI, 0.36), pred_seq, col=col.alpha(plot_cols[4], 0.18))
-  shade(apply(comm_size, 2, PI, 0.18), pred_seq, col=col.alpha(plot_cols[4], 0.18))
-  lines(x=pred_seq, y=apply(comm_size,2,median), col=plot_cols[4], lwd=3)
-  mtext("Comm. Size z-score", cex=1.5, line=0.5)
-  #########################
-  plot(NULL, xlab="", ylab="", xlim=c(0,1), ylim=c(0,1), xaxt='n',  yaxt='n', axes=F, ann=F)
-  axis(2, at=c(0, 0.5, 1), labels=c("0", "0.5", "1"), cex.axis=2.2, line=1)
-  axis(1, at=c(0.1,0.9), labels=c("Egalitarian", "Stratified"), cex.axis=2.2, line=1, tck=-.02)
-  shade(apply(strat, 2, PI, 0.90), c(0,1), col=col.alpha(plot_cols[3], 0.18))
-  shade(apply(strat, 2, PI, 0.72), c(0,1), col=col.alpha(plot_cols[3], 0.18))
-  shade(apply(strat, 2, PI, 0.54), c(0,1), col=col.alpha(plot_cols[3], 0.18))
-  shade(apply(strat, 2, PI, 0.36), c(0,1), col=col.alpha(plot_cols[3], 0.18))
-  shade(apply(strat, 2, PI, 0.18), c(0,1), col=col.alpha(plot_cols[3], 0.18))
-  lines(x=c(0,1), y=apply(strat,2,median), col=plot_cols[3], lwd=3)
-  mtext("Social Strat.", cex=1.5, line=0.5)
-  ##############################
-  plot(NULL, xlab="", ylab="", xlim=c(-1,1), ylim=c(0,1), xaxt="n", yaxt="n",  axes=F, ann=F)
-  axis(2, at=c(0, 0.5, 1), labels=c("0", "0.5", "1"), cex.axis=2.2, line=1)
-  axis(1, at=seq(-1,1,length.out = 5), labels=seq(-1,1,length.out = 5)*2, cex.axis=2.2, line=1, tck=-.02)
-  shade(apply(precip_pred, 2, PI, 0.90), pred_seq, col=col.alpha(plot_cols[2], 0.18))
-  shade(apply(precip_pred, 2, PI, 0.72), pred_seq, col=col.alpha(plot_cols[2], 0.18))
-  shade(apply(precip_pred, 2, PI, 0.54), pred_seq, col=col.alpha(plot_cols[2], 0.18))
-  shade(apply(precip_pred, 2, PI, 0.36), pred_seq, col=col.alpha(plot_cols[2], 0.18))
-  shade(apply(precip_pred, 2, PI, 0.18), pred_seq, col=col.alpha(plot_cols[2], 0.18))
-  lines(x=pred_seq, y=apply(precip_pred,2,median), col=plot_cols[2], lwd=3)
-  mtext("Precip Pred. z-score", cex=1.5, line=0.5)
-  #############################
-  plot(NULL, xlab="", ylab="", xlim=c(-1,1), ylim=c(0,1), xaxt='n', yaxt="n",  axes=F, ann=F)
-  axis(2, at=c(0, 0.5, 1), labels=c("0", "0.5", "1"), cex.axis=2.2, line=1)
-  axis(1, at=seq(-1,1,length.out = 5), labels=seq(-1,1,length.out = 5)*2, cex.axis=2.2, line=1, tck=-.02)
-  shade(apply(hunt, 2, PI, 0.90), pred_seq, col=col.alpha(plot_cols[1], 0.18))
-  shade(apply(hunt, 2, PI, 0.72), pred_seq, col=col.alpha(plot_cols[1], 0.18))
-  shade(apply(hunt, 2, PI, 0.54), pred_seq, col=col.alpha(plot_cols[1], 0.18))
-  shade(apply(hunt, 2, PI, 0.36), pred_seq, col=col.alpha(plot_cols[1], 0.18))
-  shade(apply(hunt, 2, PI, 0.18), pred_seq, col=col.alpha(plot_cols[1], 0.18))
-  lines(x=pred_seq, y=apply(hunt,2,median), col=plot_cols[1], lwd=3)
-  mtext("Hunting z-score", cex=1.5, line=0.5)
-}
-dev.off()
-########################## Posterior predictive checks ###################################
-y_pred <- post$y_hat + post$phy_v + post$ep_v
-y_pred <- logistic(y_pred)
-
-y_sims <- matrix(NA, length(post$a[,1]), data_list$N)
-for (i in 1:length(post$a[,1]))
-  for (j in 1:data_list$N) {
-  y_sims[i,j] = rbinom(1, size=1, prob=y_pred[i,j])
-}
-
-y_prop <- rowSums(y_sims)
-
-hist(y_prop, breaks=10,  lty="blank", col=col.alpha("skyblue", 0.7), main="", ylab="", xlab="Predicted Frequency of Food Sharing", xlim=c(0,73), yaxt='n', yaxs='i', cex=1.5, cex.axis=1.5, cex.lab=1.5)
-abline(v=sum(data_list$y), lwd=3, lty=2, col="orange" )
-text(x=sum(data_list$y) + 30, y=500, expression("Observed Frequency =" ~ over(22,73)), col="orange", cex=1.4)
 
 dev.off()
 
@@ -946,3 +757,193 @@ obj$cols[1:n]<- colorRampPalette(c("#3B9AB2", "#78B7C5", "#EBCC2A", "#E1AF00", "
 plot(obj,legend=FALSE,lwd=6,outline=FALSE,fsize=c(0.9,1), sig=0, cex.lab=0.5)
 add.color.bar(leg=29.8,cols=obj$cols,title="",prompt=FALSE,x=20,
               y=53.5,lwd=7,fsize=1.2,subtitle="Pr (Daily Food Share)", outline=FALSE)
+
+#########################################################################################
+#################### Posterior predictive plots (Figure 2B) #############################
+post <- extract.samples(fit_m_phy_EP)
+pred_seq <- seq(from=-1, to=1, length.out = 10)
+plot_cols <- c(wes_palette("Darjeeling1"), wes_palette("GrandBudapest2"), "mediumorchid1")
+plot_cols[7] <- "palegreen3"
+
+### Posterior predictions
+### Continous predictors will be projected on sequence from -2SD to +2SD ([-1,1] units given our standardization)
+### Binary predictors will be projected onto a sequence c(0,1)
+{
+  labor <- matrix(0, nrow=250, ncol=2)
+  for (i in 1:250) {
+    labor[i,] = logistic(post$b[i,1] + post$b[i,10]*c(0,1))
+  }
+  food_store <- matrix(0, nrow=250, ncol=2)
+  for (i in 1:250) {
+    food_store[i,] = logistic(post$b[i,1] + post$b[i,3]*c(0,1))
+  }
+  npp_pred <- matrix(0, nrow=250, ncol=length(pred_seq))
+  for (i in 1:250) {
+    npp_pred[i,] = logistic(post$b[i,1] + post$b[i,9]*pred_seq)
+  }
+  trade_food <- matrix(0, nrow=250, ncol=2)
+  for (i in 1:250) {
+    trade_food[i,] = logistic(post$b[i,1] + post$b[i,4]*c(0,1))
+  }
+  strat <- matrix(0, nrow=250, ncol=2)
+  for (i in 1:250) {
+    strat[i,] = logistic(post$b[i,1] + post$b[i,5]*c(0,1))
+  }
+  hus <- matrix(0, nrow=250, ncol=length(pred_seq))
+  for (i in 1:250) {
+    hus[i,] = logistic(post$b[i,1] + post$b[i,6]*pred_seq)
+  }
+  temp_pred <- matrix(0, nrow=250, ncol=length(pred_seq))
+  for (i in 1:250) {
+    temp_pred[i,] = logistic(post$b[i,1] + post$b[i,8]*pred_seq)
+  }
+  comm_size <- matrix(0, nrow=250, ncol=length(pred_seq))
+  for (i in 1:250) {
+    comm_size[i,] = logistic(post$b[i,1] + post$b[i,11]*pred_seq)
+  }
+  precip_pred <- matrix(0, nrow=250, ncol=length(pred_seq))
+  for (i in 1:250) {
+    precip_pred[i,] = logistic(post$b[i,1] + post$b[i,7]*pred_seq)
+  }
+  hunt <- matrix(0, nrow=250, ncol=length(pred_seq))
+  for (i in 1:250) {
+    hunt[i,] = logistic(post$b[i,1] + post$b[i,2]*pred_seq)
+  }
+} # end predictions
+
+svg(filename="pred_plot.svg", 
+    width=6, 
+    height=8, 
+    pointsize=8)
+
+par(mfrow=c(4,3), mar=c(4, 5, 0, 2), oma=c(1,3.5,1,0.5), cex.lab=2.4, pty='s', xaxs="r", las=1) 
+{
+  ##########################
+  plot(NULL, xlab="", ylab="", xlim=c(-1,1), ylim=c(0,1), yaxt="n",  xaxt="n", axes=F, ann=F)
+  axis(1, at=seq(-1,1,length.out = 5), labels=seq(-1,1,length.out = 5)*2, cex.axis=2.2, line=1)
+  axis(2, at=c(0, 0.5, 1), labels=c("0", "0.5", "1"), cex.axis=2.2, line=1, tck=-.02)
+  shade(apply(npp_pred, 2, PI, 0.90), pred_seq, col=col.alpha(plot_cols[10], 0.18))
+  shade(apply(npp_pred, 2, PI, 0.72), pred_seq, col=col.alpha(plot_cols[10], 0.18))
+  shade(apply(npp_pred, 2, PI, 0.54), pred_seq, col=col.alpha(plot_cols[10], 0.18))
+  shade(apply(npp_pred, 2, PI, 0.36), pred_seq, col=col.alpha(plot_cols[10], 0.18))
+  shade(apply(npp_pred, 2, PI, 0.18), pred_seq, col=col.alpha(plot_cols[10], 0.18))
+  lines(x=pred_seq, y=apply(npp_pred,2,median), col=plot_cols[10], lwd=3)
+  mtext("NPP Pred. z-score", cex=1.5, line=0.5)
+  ##############################
+  plot(NULL, xlab="", ylab="", xlim=c(0,1), ylim=c(0,1), xaxt='n',  yaxt='n' , axes=F, ann=F)
+  axis(2, at=c(0, 0.5, 1), labels=c("0", "0.5", "1"), cex.axis=2.2, line=1)
+  axis(1, at=c(0.1,0.9), labels=c("Absent", "Present"), cex.axis=2.2, line=1, tck=-.02)
+  shade(apply(labor, 2, PI, 0.90), c(0,1), col=col.alpha(plot_cols[9], 0.18))
+  shade(apply(labor, 2, PI, 0.72), c(0,1), col=col.alpha(plot_cols[9], 0.18))
+  shade(apply(labor, 2, PI, 0.54), c(0,1), col=col.alpha(plot_cols[9], 0.18))
+  shade(apply(labor, 2, PI, 0.36), c(0,1), col=col.alpha(plot_cols[9], 0.18))
+  shade(apply(labor, 2, PI, 0.18), c(0,1), col=col.alpha(plot_cols[9], 0.18))
+  lines(x=c(0,1), y=apply(labor,2,median), col=plot_cols[9], lwd=3)
+  mtext("Labor Sharing", cex=1.5, line=0.5)
+  ##########################
+  plot(NULL, xlab="", ylab="", xlim=c(-1,1), ylim=c(0,1),  xaxt="n", yaxt="n", axes=F, ann=F)
+  axis(2, at=c(0, 0.5, 1), labels=c("0", "0.5", "1"), cex.axis=2.2, line=1)
+  axis(1, at=seq(-1,1,length.out = 5), labels=seq(-1,1,length.out = 5)*2, cex.axis=2.2, line=1, tck=-.02)
+  shade(apply(hus, 2, PI, 0.90), pred_seq, col=col.alpha(plot_cols[8], 0.18))
+  shade(apply(hus, 2, PI, 0.72), pred_seq, col=col.alpha(plot_cols[8], 0.18))
+  shade(apply(hus, 2, PI, 0.54), pred_seq, col=col.alpha(plot_cols[8], 0.18))
+  shade(apply(hus, 2, PI, 0.36), pred_seq, col=col.alpha(plot_cols[8], 0.18))
+  shade(apply(hus, 2, PI, 0.18), pred_seq, col=col.alpha(plot_cols[8], 0.18))
+  lines(x=pred_seq, y=apply(hus,2,median), col=plot_cols[8], lwd=3)
+  mtext("Animal Hus. z-score", cex=1.5, line=0.5)
+  ###########################
+  plot(NULL, xlab="", ylab="", xlim=c(0,1), ylim=c(0,1), xaxt='n',  yaxt="n", axes=F, ann=F)
+  axis(1, at=c(0.1,0.9), labels=c("Absent", "Present"), cex.axis=2.2, line=1)
+  axis(2, at=c(0, 0.5, 1), labels=c("0", "0.5", "1"), cex.axis=2.2, line=1, tck=-.02)
+  shade(apply(food_store, 2, PI, 0.90), c(0,1), col=col.alpha(plot_cols[7], 0.18))
+  shade(apply(food_store, 2, PI, 0.72), c(0,1), col=col.alpha(plot_cols[7], 0.18))
+  shade(apply(food_store, 2, PI, 0.54), c(0,1), col=col.alpha(plot_cols[7], 0.18))
+  shade(apply(food_store, 2, PI, 0.36), c(0,1), col=col.alpha(plot_cols[7], 0.18))
+  shade(apply(food_store, 2, PI, 0.18), c(0,1), col=col.alpha(plot_cols[7], 0.18))
+  lines(x=c(0,1), y=apply(food_store,2,median), col=plot_cols[7], lwd=3)
+  mtext("Food Storage", cex=1.5, line=0.5)
+  ##############################
+  plot(NULL, xlab="", ylab="", xlim=c(-1,1), ylim=c(0,1), xaxt='n', yaxt="n",  axes=F, ann=F)
+  axis(2, at=c(0, 0.5, 1), labels=c("0", "0.5", "1"), cex.axis=2.2, line=1, tck=-.02)
+  axis(1, at=seq(-1,1,length.out = 5), labels=seq(-1,1,length.out = 5)*2, cex.axis=2.2, line=1)
+  shade(apply(temp_pred, 2, PI, 0.90), pred_seq, col=col.alpha(plot_cols[6], 0.18))
+  shade(apply(temp_pred, 2, PI, 0.72), pred_seq, col=col.alpha(plot_cols[6], 0.18))
+  shade(apply(temp_pred, 2, PI, 0.54), pred_seq, col=col.alpha(plot_cols[6], 0.18))
+  shade(apply(temp_pred, 2, PI, 0.36), pred_seq, col=col.alpha(plot_cols[6], 0.18))
+  shade(apply(temp_pred, 2, PI, 0.18), pred_seq, col=col.alpha(plot_cols[6], 0.18))
+  lines(x=pred_seq, y=apply(temp_pred,2,median), col=plot_cols[6], lwd=3)
+  mtext("Temp Pred. z-score", cex=1.5, line=0.5)
+  ##########################
+  plot(NULL, xlab="", ylab="", xlim=c(0,1), ylim=c(0,1), xaxt='n',  yaxt="n", axes=F, ann=F)
+  axis(1, at=c(0.1,0.9), labels=c("Absent", "Present"), cex.axis=2.2, line=1)
+  axis(2, at=c(0, 0.5, 1), labels=c("0", "0.5", "1"), cex.axis=2.2, line=1, tck=-.02)
+  shade(apply(trade_food, 2, PI, 0.90), c(0,1), col=col.alpha(plot_cols[5], 0.18))
+  shade(apply(trade_food, 2, PI, 0.72), c(0,1), col=col.alpha(plot_cols[5], 0.18))
+  shade(apply(trade_food, 2, PI, 0.54), c(0,1), col=col.alpha(plot_cols[5], 0.18))
+  shade(apply(trade_food, 2, PI, 0.36), c(0,1), col=col.alpha(plot_cols[5], 0.18))
+  shade(apply(trade_food, 2, PI, 0.18), c(0,1), col=col.alpha(plot_cols[5], 0.18))
+  lines(x=c(0,1), y=apply(trade_food,2,median), col=plot_cols[5], lwd=3)
+  mtext("External Trade", cex=1.5, line=0.5)
+  ##############################
+  plot(NULL, xlab="", ylab="", xlim=c(-1,1), ylim=c(0,1), xaxt='n', yaxt="n",  axes=F, ann=F)
+  axis(2, at=c(0, 0.5, 1), labels=c("0", "0.5", "1"), cex.axis=2.2, line=1)
+  axis(1, at=seq(-1,1,length.out = 5), labels=seq(-1,1,length.out = 5)*2, cex.axis=2.2, line=1, tck=-.02)
+  shade(apply(comm_size, 2, PI, 0.90), pred_seq, col=col.alpha(plot_cols[4], 0.18))
+  shade(apply(comm_size, 2, PI, 0.72), pred_seq, col=col.alpha(plot_cols[4], 0.18))
+  shade(apply(comm_size, 2, PI, 0.54), pred_seq, col=col.alpha(plot_cols[4], 0.18))
+  shade(apply(comm_size, 2, PI, 0.36), pred_seq, col=col.alpha(plot_cols[4], 0.18))
+  shade(apply(comm_size, 2, PI, 0.18), pred_seq, col=col.alpha(plot_cols[4], 0.18))
+  lines(x=pred_seq, y=apply(comm_size,2,median), col=plot_cols[4], lwd=3)
+  mtext("Comm. Size z-score", cex=1.5, line=0.5)
+  #########################
+  plot(NULL, xlab="", ylab="", xlim=c(0,1), ylim=c(0,1), xaxt='n',  yaxt='n', axes=F, ann=F)
+  axis(2, at=c(0, 0.5, 1), labels=c("0", "0.5", "1"), cex.axis=2.2, line=1)
+  axis(1, at=c(0.1,0.9), labels=c("Egalitarian", "Stratified"), cex.axis=2.2, line=1, tck=-.02)
+  shade(apply(strat, 2, PI, 0.90), c(0,1), col=col.alpha(plot_cols[3], 0.18))
+  shade(apply(strat, 2, PI, 0.72), c(0,1), col=col.alpha(plot_cols[3], 0.18))
+  shade(apply(strat, 2, PI, 0.54), c(0,1), col=col.alpha(plot_cols[3], 0.18))
+  shade(apply(strat, 2, PI, 0.36), c(0,1), col=col.alpha(plot_cols[3], 0.18))
+  shade(apply(strat, 2, PI, 0.18), c(0,1), col=col.alpha(plot_cols[3], 0.18))
+  lines(x=c(0,1), y=apply(strat,2,median), col=plot_cols[3], lwd=3)
+  mtext("Social Strat.", cex=1.5, line=0.5)
+  ##############################
+  plot(NULL, xlab="", ylab="", xlim=c(-1,1), ylim=c(0,1), xaxt="n", yaxt="n",  axes=F, ann=F)
+  axis(2, at=c(0, 0.5, 1), labels=c("0", "0.5", "1"), cex.axis=2.2, line=1)
+  axis(1, at=seq(-1,1,length.out = 5), labels=seq(-1,1,length.out = 5)*2, cex.axis=2.2, line=1, tck=-.02)
+  shade(apply(precip_pred, 2, PI, 0.90), pred_seq, col=col.alpha(plot_cols[2], 0.18))
+  shade(apply(precip_pred, 2, PI, 0.72), pred_seq, col=col.alpha(plot_cols[2], 0.18))
+  shade(apply(precip_pred, 2, PI, 0.54), pred_seq, col=col.alpha(plot_cols[2], 0.18))
+  shade(apply(precip_pred, 2, PI, 0.36), pred_seq, col=col.alpha(plot_cols[2], 0.18))
+  shade(apply(precip_pred, 2, PI, 0.18), pred_seq, col=col.alpha(plot_cols[2], 0.18))
+  lines(x=pred_seq, y=apply(precip_pred,2,median), col=plot_cols[2], lwd=3)
+  mtext("Precip Pred. z-score", cex=1.5, line=0.5)
+  #############################
+  plot(NULL, xlab="", ylab="", xlim=c(-1,1), ylim=c(0,1), xaxt='n', yaxt="n",  axes=F, ann=F)
+  axis(2, at=c(0, 0.5, 1), labels=c("0", "0.5", "1"), cex.axis=2.2, line=1)
+  axis(1, at=seq(-1,1,length.out = 5), labels=seq(-1,1,length.out = 5)*2, cex.axis=2.2, line=1, tck=-.02)
+  shade(apply(hunt, 2, PI, 0.90), pred_seq, col=col.alpha(plot_cols[1], 0.18))
+  shade(apply(hunt, 2, PI, 0.72), pred_seq, col=col.alpha(plot_cols[1], 0.18))
+  shade(apply(hunt, 2, PI, 0.54), pred_seq, col=col.alpha(plot_cols[1], 0.18))
+  shade(apply(hunt, 2, PI, 0.36), pred_seq, col=col.alpha(plot_cols[1], 0.18))
+  shade(apply(hunt, 2, PI, 0.18), pred_seq, col=col.alpha(plot_cols[1], 0.18))
+  lines(x=pred_seq, y=apply(hunt,2,median), col=plot_cols[1], lwd=3)
+  mtext("Hunting z-score", cex=1.5, line=0.5)
+}
+dev.off()
+########################## Posterior predictive checks ###################################
+y_pred <- post$y_hat + post$phy_v + post$ep_v
+y_pred <- logistic(y_pred)
+
+y_sims <- matrix(NA, length(post$a[,1]), data_list$N)
+for (i in 1:length(post$a[,1]))
+  for (j in 1:data_list$N) {
+  y_sims[i,j] = rbinom(1, size=1, prob=y_pred[i,j])
+}
+
+y_prop <- rowSums(y_sims)
+
+hist(y_prop, breaks=10,  lty="blank", col=col.alpha("skyblue", 0.7), main="", ylab="", xlab="Predicted Frequency of Food Sharing", xlim=c(0,73), yaxt='n', yaxs='i', cex=1.5, cex.axis=1.5, cex.lab=1.5)
+abline(v=sum(data_list$y), lwd=3, lty=2, col="orange" )
+text(x=sum(data_list$y) + 30, y=500, expression("Observed Frequency =" ~ over(22,73)), col="orange", cex=1.4)
+
+dev.off()
